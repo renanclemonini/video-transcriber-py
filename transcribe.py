@@ -1,4 +1,5 @@
 import os
+import time
 import whisper
 
 # ─────────────────────────────────────────────
@@ -69,6 +70,27 @@ def format_timestamp(seconds: float) -> str:
     return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
 
 
+def measure_time(func, *args, **kwargs):
+    """Executa uma função e exibe o tempo total de execução."""
+    start = time.perf_counter()
+    result = func(*args, **kwargs)
+    elapsed = time.perf_counter() - start
+
+    hours   = int(elapsed // 3600)
+    minutes = int((elapsed % 3600) // 60)
+    secs    = int(elapsed % 60)
+
+    if hours > 0:
+        formatted = f"{hours}h {minutes}m {secs}s"
+    elif minutes > 0:
+        formatted = f"{minutes}m {secs}s"
+    else:
+        formatted = f"{secs}s"
+
+    print(f"\n⏱️  Tempo total de execução: {formatted}")
+    return result
+
+
 def main() -> None:
     # Resolve caminhos relativos à raiz do projeto (onde o script está)
     base_dir    = os.path.dirname(os.path.abspath(__file__))
@@ -102,4 +124,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    measure_time(main)
