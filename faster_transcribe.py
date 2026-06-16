@@ -3,7 +3,7 @@ import os
 import shutil
 import time
 
-import whisper
+from faster_whisper import WhisperModel
 
 # ─────────────────────────────────────────────
 #  CONSTANTES — edite aqui conforme necessário
@@ -12,7 +12,9 @@ INPUT_FOLDER       = "input"              # pasta com os vídeos (relativa à ra
 OUTPUT_FOLDER      = "output"             # pasta de saída     (relativa à raiz do projeto)
 TRANSCRIBED_FOLDER = "transcribed_videos" # pasta para vídeos já processados
 MODEL              = "small"              # tiny | base | small | medium | large
-LANGUAGE           = "Portuguese"         # idioma do áudio
+LANGUAGE           = "pt"                 # idioma do áudio (faster-whisper usa código ISO)
+DEVICE             = "cuda"               # cuda | cpu
+COMPUTE_TYPE       = "float16"            # float16 (GPU) | int8 (CPU)
 
 # Extensões de vídeo aceitas
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".m4v"}
@@ -51,7 +53,7 @@ def move_to_transcribed(video_path: str, transcribed_dir: str) -> None:
         destination = os.path.join(transcribed_dir, f"{name}_copy{ext}")
 
     shutil.move(video_path, destination)
-    print(f"   📦 Movido para: {destination}")
+    print(f"📦 Movido para: {destination}")
 
 
 def format_timestamp(seconds: float) -> str:
@@ -63,38 +65,58 @@ def format_timestamp(seconds: float) -> str:
     return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
 
 
-def transcribe_video(model, video_path: str, output_dir: str) -> None:
+def transcribe_video(model: WhisperModel, video_path: str, output_dir: str) -> None:
     """Transcreve um vídeo e salva os arquivos na pasta de saída correspondente."""
     video_name       = os.path.splitext(os.path.basename(video_path))[0]
     video_output_dir = os.path.join(output_dir, video_name)
     os.makedirs(video_output_dir, exist_ok=True)
 
     print(f"\n🎬 Transcrevendo: {video_path}")
-    print(f"   📁 Saída: {video_output_dir}")
+    print(f"📁 Saída: {video_output_dir}")
 
-    result = model.transcribe(video_path, language=LANGUAGE)
+    segments, info = model.transcribe(video_path, language=LANGUAGE)
+    print(f"🌐 Idioma detectado: {info.language} (confiança: {info.language_probability:.0%})")
+
+    # Materializa o gerador uma única vez para reutilizar
+    segments = list(segments)
 
     # ── .txt (texto puro) ────────────────────────────────────────────────
     txt_path = os.path.join(video_output_dir, f"{video_name}.txt")
     with open(txt_path, "w", encoding="utf-8") as f:
-        f.write(result["text"].strip())
-    print(f"   ✅ {video_name}.txt")
+        f.write(" ".join(seg.text.strip() for seg in segments))
+    print(f"✅ {video_name}.txt")
 
     # ── .srt (legenda com timestamps) ───────────────────────────────────
     srt_path = os.path.join(video_output_dir, f"{video_name}.srt")
     with open(srt_path, "w", encoding="utf-8") as f:
-        for i, segment in enumerate(result["segments"], start=1):
-            start = format_timestamp(segment["start"])
-            end   = format_timestamp(segment["end"])
-            text  = segment["text"].strip()
-            f.write(f"{i}\n{start} --> {end}\n{text}\n\n")
-    print(f"   ✅ {video_name}.srt")
+        for i, seg in enumerate(segments, start=1):
+            start = format_timestamp(seg.start)
+            end   = format_timestamp(seg.end)
+            f.write(f"{i}\n{start} --> {end}\n{seg.text.strip()}\n\n")
+    print(f"✅ {video_name}.srt")
 
     # ── .json (dados completos) ──────────────────────────────────────────
     json_path = os.path.join(video_output_dir, f"{video_name}.json")
     with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
-    print(f"   ✅ {video_name}.json")
+        json.dump(
+            {
+                "language": info.language,
+                "language_probability": info.language_probability,
+                "segments": [
+                    {
+                        "id":    i,
+                        "start": seg.start,
+                        "end":   seg.end,
+                        "text":  seg.text.strip(),
+                    }
+                    for i, seg in enumerate(segments, start=1)
+                ],
+            },
+            f,
+            ensure_ascii=False,
+            indent=2,
+        )
+    print(f"✅ {video_name}.json")
 
 
 def measure_time(func, *args, **kwargs):
@@ -139,10 +161,11 @@ def main() -> None:
     print(f"📦 Vídeos transcritos: {transcribed_path}")
     print(f"🤖 Modelo Whisper    : {MODEL}")
     print(f"🌐 Idioma            : {LANGUAGE}")
+    print(f"⚡ Device            : {DEVICE} ({COMPUTE_TYPE})")
     print(f"🎬 Vídeos encontrados: {len(videos)}")
 
     print(f"\n⏳ Carregando modelo '{MODEL}'...")
-    model = whisper.load_model(MODEL)
+    model = WhisperModel(MODEL, device=DEVICE, compute_type=COMPUTE_TYPE)
     print("✅ Modelo carregado!\n")
 
     for video_path in videos:
@@ -157,4 +180,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     measure_time(main)
-  
