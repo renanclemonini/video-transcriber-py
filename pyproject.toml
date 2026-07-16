@@ -1,0 +1,17 @@
+[project]
+name = "video-transcriber-py"
+version = "1.0.0"
+description = "Python script to transcribe videos"
+authors = [
+    {name = "Renan Clemonini",email = "rclemon93@gmail.com"}
+]
+requires-python = ">=3.13"
+dependencies = [
+    "openai-whisper (>=20250625,<20250626)",
+    "faster-whisper (>=1.2.1,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

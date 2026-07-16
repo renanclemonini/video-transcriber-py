@@ -17,7 +17,7 @@ DEVICE             = "cuda"               # cuda | cpu
 COMPUTE_TYPE       = "float16"            # float16 (GPU) | int8 (CPU)
 
 # Extensões de vídeo aceitas
-VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".m4v"}
+VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".m4v", ".m4a"}
 
 # ─────────────────────────────────────────────
 
@@ -148,7 +148,7 @@ def main() -> None:
 
     if not os.path.isdir(input_path):
         print(f"❌ Pasta de entrada não encontrada: {input_path}")
-        return
+        os.makedirs(input_path, exist_ok=True)
 
     videos = get_video_files(input_path)
 

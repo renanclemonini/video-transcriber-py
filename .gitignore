@@ -4,3 +4,4 @@ output/
 venv/
 .env/
 transcribed_videos/
+.vscode/
