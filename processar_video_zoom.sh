@@ -10,7 +10,9 @@ OUTPUT_DIR="$SCRIPT_DIR/output"
 TRANSCRIBED_DIR="$SCRIPT_DIR/transcribed_videos"
 VENV_DIR="$SCRIPT_DIR/.venv"
 PROMPT_FILE="$SCRIPT_DIR/prompt_relatorio.txt"
-TESTE=1
+TESTE=0
+
+[[ "${1:-}" == "--test" ]] && TESTE=1
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
@@ -64,11 +66,13 @@ processar_transcricao() {
 
     mkdir -p "$pasta_destino"
 
-    mv "$video" "$pasta_destino/$nome_video"
-    log "  → Vídeo movido para $pasta_destino/"
-
     cp "$fonte" "$INPUT_DIR/$nome_src"
     log "  → Fonte copiada para input/"
+
+    if [ -n "$video" ] && [ -f "$video" ]; then
+        mv "$video" "$pasta_destino/$nome_video"
+        log "  → Vídeo movido para $pasta_destino/"
+    fi
 
     cd "$SCRIPT_DIR"
     source "$VENV_DIR/bin/activate"
@@ -100,9 +104,9 @@ processar_transcricao() {
             local prompt_content
             prompt_content="$(cat "$PROMPT_FILE")"
             opencode run --model opencode/mimo-v2.5-free --auto \
-            "Leia o arquivo $prompt_content para fazer o relatório da transcrição \
-            $arquivo_transcricao" > "$pasta_destino/${HOJE_DD_MM_YYYY}_relatorio.docx"
+            "$prompt_content \n$arquivo_transcricao" > "$pasta_destino/${HOJE_DD_MM_YYYY}_relatorio_test.md"
             log "  → Relatório salvo em $pasta_destino/"
+            mv "$pasta_destino/${HOJE_DD_MM_YYYY}_relatorio_test.md" "$pasta_destino/${HOJE_DD_MM_YYYY}_relatorio.docx"
         else
             log "  ⚠ Arquivo de transcrição não encontrado, pulando relatório"
         fi
@@ -163,18 +167,15 @@ for zoom_folder in "${zoom_folders[@]}"; do
     audio=$(procurar_audio "$zoom_folder")
     video=$(procurar_video "$zoom_folder")
 
-    if [ -z "$video" ]; then
-        log "  ⚠ Nenhum arquivo .mp4 encontrado, pulando"
+    if [ -z "$audio" ] && [ -z "$video" ]; then
+        log "  ⚠ Nenhum arquivo de áudio ou vídeo encontrado, pulando"
         continue
     fi
 
-    if [ -n "$audio" ] && [ -n "$video" ]; then
+    if [ -n "$audio" ]; then
         processar_transcricao "$audio" "$video" "$zoom_folder"
-    elif [ -z "$audio" ] && [ -n "$video" ]; then
-        processar_transcricao "$video" "$video" "$zoom_folder"
     else
-        log "  ⚠ Nenhum arquivo de áudio ou vídeo encontrado, pulando"
-        continue
+        processar_transcricao "$video" "$video" "$zoom_folder"
     fi
 done
 

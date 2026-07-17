@@ -53,3 +53,10 @@ Cole a transcrição em formato SRT ou texto corrido da call de dúvidas logo ap
 ---
 ## Saída esperada
 Um relatório markdown completo, sem preâmbulo, sem explicação, sem bloco de código envolvendo o relatório — apenas o conteúdo direto pronto para copiar e colar.
+
+## IMPORTANTE — Regra de saída
+Não escreva o relatório em arquivo algum. Não use as ferramentas Write ou Edit.
+Apenas responda com o conteúdo do relatório diretamente na sua mensagem,
+sem nenhum texto adicional antes ou depois.
+
+## Transcrição 
